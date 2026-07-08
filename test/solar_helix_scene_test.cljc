@@ -4,7 +4,7 @@
 
 (deftest smoke-test
   (testing "namespace loads"
-    (is (some? (the-ns 'solar-helix-scene)))))
+    (is (some? (find-ns 'solar-helix-scene)))))
 
 (deftest shipped-has-all-bodies
   (let [bodies (helix/shipped-bodies)]
@@ -115,6 +115,48 @@
         [_ _ z1] (helix/galactic-frame-position-au earth g 100.0)
         [_ _ z2] (helix/galactic-frame-position-au earth g 200.0)]
     (is (> z2 z1))))
+
+;; au->km/km->au/circumference-au/angular-position-rad/pitch-au were only
+;; ever exercised transitively (through orbital-speed-km-s/pitch-to-
+;; circumference-ratio/heliocentric-position-au), never asserted directly
+;; -- maturity-loop coverage pass.
+
+(deftest au-km-round-trip-and-known-value
+  (testing "1 AU = 1.495978707e8 km (IAU 2012 exact definition), and the conversion round-trips"
+    (is (close? (helix/au->km 1.0) 1.495978707e8 1e-9))
+    (is (close? (helix/km->au 1.495978707e8) 1.0 1e-9))
+    (is (close? (helix/km->au (helix/au->km 42.0)) 42.0 1e-9))))
+
+(deftest circumference-au-matches-2-pi-r
+  (let [bodies (helix/shipped-bodies)]
+    (is (close? (helix/circumference-au (get bodies "earth")) (* 2 Math/PI) 1e-9)
+        "earth's orbit radius is exactly 1.0 AU, so circumference = 2*pi")
+    (is (close? (helix/circumference-au (get bodies "jupiter"))
+                (* 2 Math/PI (:orbit-radius-au (get bodies "jupiter")))
+                1e-9))
+    (is (zero? (helix/circumference-au (get bodies "sun"))))))
+
+(deftest angular-position-rad-progresses-through-a-period
+  (let [earth (get (helix/shipped-bodies) "earth")
+        sun (get (helix/shipped-bodies) "sun")]
+    (is (zero? (helix/angular-position-rad earth 0.0)))
+    (is (close? (helix/angular-position-rad earth (/ (:period-days earth) 4)) (/ Math/PI 2) 1e-6)
+        "a quarter of the way through the period is a quarter-turn (pi/2 rad)")
+    (is (close? (helix/angular-position-rad earth (:period-days earth)) (* 2 Math/PI) 1e-6)
+        "a full period is a full turn (2*pi rad)")
+    (is (zero? (helix/angular-position-rad sun 123.0))
+        "the sun has period-days 0 -> always angle 0, not a divide-by-zero")))
+
+(deftest pitch-au-matches-the-tested-pitch-to-circumference-ratio
+  (testing "pitch-au, checked independently against the already-verified ~7.4x ratio (not just re-deriving the same formula)"
+    (let [bodies (helix/shipped-bodies)
+          g (helix/shipped-galactic-frame)
+          earth (get bodies "earth")
+          pitch (helix/pitch-au earth g)
+          circumference (helix/circumference-au earth)]
+      (is (close? pitch (* circumference 7.4) 0.05))
+      (is (zero? (helix/pitch-au (get bodies "sun") g))
+          "sun's period-days is 0, so pitch-au (sun-forward-au-per-day * period-days) is 0.0, not nil -- unlike pitch-to-circumference-ratio, which explicitly nil-guards on zero circumference, pitch-au itself has no such guard (it's just the raw product); this documents that real, current behavior rather than the guarded value a caller might assume"))))
 
 (deftest helix-tick-covers-every-body
   (let [bodies (helix/shipped-bodies)
