@@ -36,6 +36,27 @@
     (is (some? err))
     (is (= :no-galactic-frame (:solar-helix-scene/error (ex-data err))))))
 
+(deftest bodies-from-edn-silently-skips-malformed-per-body-entries
+  (testing "bodies-from-edn's inner reduce has two conditions that drop an
+            entry rather than throw -- a non-keyword key (scene/kw-key
+            returns nil) or a non-map value -- previously exercised by
+            neither test nor any comment describing the behavior as
+            intentional. Documented here as the real, current behavior:
+            one malformed sibling entry doesn't fail the whole parse, it's
+            just missing from the result."
+    (testing "a non-map value for an otherwise-valid keyword key is skipped"
+      (let [bodies (helix/bodies-from-edn
+                    "{:helix/bodies {:earth {:orbit-radius-au 1.0 :period-days 365.0 :color [1 0 0]}
+                                     :bad-one \"not-a-map\"}}")]
+        (is (= #{"earth"} (set (keys bodies)))
+            "only the well-formed :earth entry survives; :bad-one's non-map value is dropped, not an error")))
+    (testing "a non-keyword key is skipped even though its value is well-formed"
+      (let [bodies (helix/bodies-from-edn
+                    "{:helix/bodies {:earth {:orbit-radius-au 1.0 :period-days 365.0 :color [1 0 0]}
+                                     \"string-key\" {:orbit-radius-au 2.0 :period-days 400.0 :color [0 1 0]}}}")]
+        (is (= #{"earth"} (set (keys bodies)))
+            "the string-keyed entry is dropped regardless of its own value being a valid body spec")))))
+
 ;; Published mean orbital speeds (km/s, textbook values) — the oracle this
 ;; namespace's *derived* (2*pi*r/T, not transcribed) orbital-speed-km-s is
 ;; checked against. Circular-orbit approximation, so a few % tolerance.
