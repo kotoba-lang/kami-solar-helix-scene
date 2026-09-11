@@ -100,7 +100,7 @@
 ;; plane inclination; kept at that precision deliberately (not pinned to
 ;; sub-degree accuracy, which would require a full spherical-astronomy
 ;; frame transform this schematic model does not attempt — see
-;; `galactic-frame-position-au` docstring in `src/solar_helix_scene.cljc`).
+;; `galactic-frame-position-au` docstring in `src/solar_helix_scene.cljk`).
 {:helix/bodies
  {:sun     {:orbit-radius-au 0.0     :period-days 0.0      :color [1.0  0.86 0.2]}
   :mercury {:orbit-radius-au 0.38710 :period-days 87.9691  :color [0.6  0.6  0.6]}
