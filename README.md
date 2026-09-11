@@ -78,5 +78,5 @@ whichever adapter picks it up.
 ## Develop
 
 ```bash
-clojure -M:test
+kbb -M:test
 ```
