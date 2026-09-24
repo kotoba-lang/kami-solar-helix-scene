@@ -1,5 +1,5 @@
 (ns solar-helix-scene-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [solar-helix-scene :as helix]))
 
 (deftest smoke-test
